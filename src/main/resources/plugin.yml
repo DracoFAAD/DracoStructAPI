@@ -1,0 +1,10 @@
+name: DracoStructAPI
+version: '${project.version}'
+main: me.dracofaad.dracostructapi.DracoStructAPI
+api-version: '1.20'
+permissions:
+  structureapi.*:
+    default: false
+commands:
+  structureapi:
+    permission: structureapi.*
