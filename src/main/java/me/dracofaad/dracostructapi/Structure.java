@@ -1,22 +1,39 @@
 package me.dracofaad.dracostructapi;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
+import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.Item;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.util.io.BukkitObjectInputStream;
+import org.bukkit.util.io.BukkitObjectOutputStream;
+import org.checkerframework.checker.units.qual.C;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
+import java.lang.reflect.Type;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
-public class Structure {
-    public List<StructureBlock> blocks = new ArrayList<>();
+public class Structure implements Serializable {
+    public HashSet<StructureBlock> blocks = new HashSet<>();
     public String StructureName = "";
-    public String StructureString = "";
-
     /**
      *
      * This function returns a brand new Structure which is retrieved from the real world.
@@ -30,6 +47,7 @@ public class Structure {
      * @param y2 Y coordination of corner 2
      * @param z2 Z coordination of corner 2
      */
+
     public Structure(String name, World world, double x1, double y1, double z1, double x2, double y2, double z2) {
         this.StructureName = name;
 
@@ -61,119 +79,180 @@ public class Structure {
                     double zOffset = z-z1;
 
                     Location location = new Location(world, x, y, z);
-                    BlockData blockData = location.getBlock().getBlockData();
+                    Block block = location.getBlock();
+                    BlockData blockData = block.getBlockData();
                     String blockDataString = blockData.getAsString();
-                    blocks.add(new StructureBlock(blockDataString, xOffset, yOffset, zOffset));
+                    HashSet<Tuple<Integer, Map<String, Object>>> containerData = null;
+
+                    if (block.getState() instanceof Container) {
+                        containerData = new HashSet<>();
+                        if (block.getState() instanceof Chest) {
+                            ContainerToHashSet(((Chest) block.getState()).getBlockInventory(), containerData);
+                        } else {
+                            ContainerToHashSet(((Container) block.getState()).getInventory(), containerData);
+                        }
+                    }
+
+                    blocks.add(new StructureBlock(blockDataString, xOffset, yOffset, zOffset, containerData));
                 }
             }
         }
-
-        reloadStructureString();
     }
 
-    public Structure(String StructureString) {
-        this.StructureString = StructureString;
-        parseStructureString();
-    }
-
-    public Structure(File StructureFile) {
-        try {
-            this.StructureString = String.join("\n", Files.readAllLines(StructureFile.toPath()));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    private void ContainerToHashSet(Inventory inventory, HashSet<Tuple<Integer, Map<String, Object>>> hashSet) {
+        for (ListIterator<ItemStack> iterator = inventory.iterator(); iterator.hasNext(); ) {
+            Integer index = iterator.nextIndex();
+            ItemStack itemStack = iterator.next();
+            if (itemStack == null) continue;
+            hashSet.add(new Tuple<>(index, itemStack.serialize()));
         }
-        parseStructureString();
     }
 
-    public Structure(InputStream StructureInputStream) {
-        this.StructureString = inputStreamToString(StructureInputStream);
-        parseStructureString();
+    private void HashSetToContainer(Inventory inventory, HashSet<Tuple<Integer, Map<String, Object>>> hashSet) {
+        for (Tuple<Integer, Map<String, Object>> item : hashSet) {
+            inventory.setItem(item.Value1, ItemStack.deserialize(item.Value2));
+        }
     }
 
-    public static String inputStreamToString(InputStream inputStream) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            StringBuilder stringBuilder = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                stringBuilder.append(line).append("\n");
+    //#region Public Saving
+    public void saveAsFile() {
+        String path = DracoStructAPI.StructuresFolder + "/" + StructureName + ".dStructure";
+        saveData(path);
+    }
+
+    public void saveAsFile(String path) {
+        saveData(path);
+    }
+    //#endregion Public Saving
+    //#region Placing
+    public void placeAtLocation(Location location) {
+        for (StructureBlock block : blocks) {
+            Block realBlock = location.clone().add(block.xOffset, block.yOffset, block.zOffset).getBlock();
+            if (block.blockData.split("\\[", 2).length == 2) {
+                BlockData blockData = Material.matchMaterial(block.blockData.split("\\[")[0]).createBlockData("[" + block.blockData.split("\\[", 2)[1]);
+                realBlock.setBlockData(blockData);
+            } else {
+                BlockData blockData = Material.matchMaterial(block.blockData.split("\\[")[0]).createBlockData();
+                realBlock.setBlockData(blockData);
             }
-            return stringBuilder.toString();
+
+            if (block.containerData != null) {
+                if (realBlock.getState() instanceof Container) {
+                    if (realBlock.getState() instanceof Chest) {
+                        HashSetToContainer(((Chest) realBlock.getState()).getBlockInventory(), block.containerData);
+                    } else {
+                        HashSetToContainer(((Container) realBlock.getState()).getInventory(), block.containerData);
+                    }
+                }
+            }
+        }
+    }
+
+    public void placeCenterXZatLocation(Location location) {
+        double centerXOffset = 0;
+        double centerZOffset = 0;
+
+        double highestX = 0;
+        double highestZ = 0;
+        for (StructureBlock block : blocks) {
+            if(block.xOffset > highestX) {
+                highestX = block.xOffset;
+            }
+
+            if(block.zOffset > highestZ) {
+                highestZ = block.zOffset;
+            }
+        }
+
+        centerZOffset -= (highestZ / 2);
+        centerXOffset -= (highestX / 2);
+
+        //Place the Blocks
+        placeAtLocation(location.clone().add(centerXOffset, 0, centerZOffset));
+    }
+    //#endregion Placing
+    //#region Saving Data
+    private boolean saveData(String FilePath) {
+        try {
+            BukkitObjectOutputStream out = new BukkitObjectOutputStream(new GZIPOutputStream(new FileOutputStream(FilePath)));
+            out.writeObject(this);
+            out.close();
+            return true;
         } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return false;
+        }
+    }
+    //#endregion Saving Data
+    //#region Loading Data
+
+    public static Structure loadData(File file) {
+        try {
+            file.createNewFile();
+            BukkitObjectInputStream in = new BukkitObjectInputStream(new GZIPInputStream(new FileInputStream(file)));
+            Structure data = (Structure) in.readObject();
+            in.close();
+            return data;
+        } catch (ClassNotFoundException | IOException e) {
+            // TODO Auto-generated catch block
             e.printStackTrace();
             return null;
         }
     }
 
-    public void saveAsFile() {
-        String path = DracoStructAPI.StructuresFolder + "/" + StructureName + ".dStructure";
+    public static Structure loadData(InputStream inputStream) {
         try {
-            Path pathToFile = Paths.get(path);
-            Files.createDirectories(pathToFile.getParent());
-            Files.write(pathToFile, StructureString.getBytes());
-        } catch (IOException e) {
+            BukkitObjectInputStream in = new BukkitObjectInputStream(new GZIPInputStream(inputStream));
+            Structure data = (Structure) in.readObject();
+            in.close();
+            return data;
+        } catch (ClassNotFoundException | IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static Structure loadData(URL url) {
+        try {
+            BukkitObjectInputStream in = new BukkitObjectInputStream(new GZIPInputStream(new FileInputStream(new File(url.toURI()))));
+            Structure data = (Structure) in.readObject();
+            in.close();
+            return data;
+        } catch (ClassNotFoundException | IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return null;
+        } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
     }
+    //#endregion Loading Data
 
-    public void saveAsFile(String path) {
-        try {
-            Path pathToFile = Paths.get(path);
-            Files.createDirectories(pathToFile.getParent());
-            Files.write(pathToFile, StructureString.getBytes());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void placeAtLocation(Location location) {
-        for (StructureBlock block : blocks) {
-            if (block.blockData.split("\\[", 2).length == 2) {
-                BlockData blockData = Material.matchMaterial(block.blockData.split("\\[")[0]).createBlockData("[" + block.blockData.split("\\[", 2)[1]);
-                location.clone().add(block.xOffset, block.yOffset, block.zOffset).getBlock().setBlockData(blockData);
-            } else {
-                BlockData blockData = Material.matchMaterial(block.blockData.split("\\[")[0]).createBlockData();
-                location.clone().add(block.xOffset, block.yOffset, block.zOffset).getBlock().setBlockData(blockData);
-            }
-
-        }
-    }
-
-    private void parseStructureString() {
-        blocks.clear();
-        String[] StructureBlocksLines = StructureString.split("\n");
-        for (String block : StructureBlocksLines) {
-            String[] coordinates = block.split("@")[0].split(";");
-            String blockData = block.split("@")[1];
-            double xOffset = Double.parseDouble(coordinates[0]);
-            double yOffset = Double.parseDouble(coordinates[1]);
-            double zOffset = Double.parseDouble(coordinates[2]);
-            blocks.add(new StructureBlock(blockData, xOffset, yOffset, zOffset));
-        }
-    }
-
-    private void reloadStructureString() {
-        StringBuilder newStructureString = new StringBuilder();
-        for (StructureBlock structureBlock : blocks) {
-            if (newStructureString.toString() == "") {
-                newStructureString.append(structureBlock.xOffset).append(";").append(structureBlock.yOffset).append(";").append(structureBlock.zOffset).append("@").append(structureBlock.blockData);
-            } else {
-                newStructureString.append("\n").append(structureBlock.xOffset).append(";").append(structureBlock.yOffset).append(";").append(structureBlock.zOffset).append("@").append(structureBlock.blockData);
-            }
-        }
-        StructureString = newStructureString.toString();
-    }
-
-    public static class StructureBlock {
+    public static class StructureBlock implements Serializable {
         public double xOffset = 0;
         public double yOffset = 0;
         public double zOffset = 0;
         public String blockData;
+        public HashSet<Tuple<Integer, Map<String, Object>>> containerData;
 
-        public StructureBlock(String blockData, double xOffset, double yOffset, double zOffset) {
+        public StructureBlock(String blockData, double xOffset, double yOffset, double zOffset, HashSet<Tuple<Integer, Map<String, Object>>> containerData) {
             this.xOffset = xOffset;
             this.yOffset = yOffset;
             this.zOffset = zOffset;
             this.blockData = blockData;
+            this.containerData = containerData;
+        }
+    }
+
+    public static class Tuple<T1, T2> implements Serializable {
+        public T1 Value1;
+        public T2 Value2;
+
+        public Tuple(T1 Value1, T2 Value2) {
+            this.Value1 = Value1;
+            this.Value2 = Value2;
         }
     }
 }

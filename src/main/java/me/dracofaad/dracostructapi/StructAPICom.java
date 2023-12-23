@@ -1,9 +1,11 @@
 package me.dracofaad.dracostructapi;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.command.*;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BlockIterator;
 import org.jetbrains.annotations.NotNull;
@@ -16,6 +18,7 @@ import java.util.List;
 public class StructAPICom implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String cmdName, @NotNull String[] args) {
+        if (!sender.hasPermission("structureapi.*") && !sender.isOp()) return false;
         if (args.length == 0) {
             sender.sendMessage(ChatColor.WHITE + "Available Sub-Commands:" + ChatColor.GOLD + "\n- saveStructure\n- placeStructure");
             return true;
@@ -73,7 +76,7 @@ public class StructAPICom implements CommandExecutor, TabCompleter {
                 return true;
             }
 
-            if (args.length != 2) {
+            if (args.length < 2) {
                 sender.sendMessage(ChatColor.WHITE + "Usage: " + cmdName + " placeStructure StructureName");
                 return true;
             }
@@ -89,8 +92,16 @@ public class StructAPICom implements CommandExecutor, TabCompleter {
             }
 
             File file = new File(DracoStructAPI.StructuresFolder + "/" + args[1] + ".dStructure");
-            Structure structure = new Structure(file);
+            Structure structure = Structure.loadData(file);
+
+            if (args.length > 2) {
+                if (args[2].equals("Center")) {
+                    structure.placeCenterXZatLocation(((Player) sender).getLocation());
+                    return true;
+                }
+            }
             structure.placeAtLocation(((Player) sender).getLocation());
+            return true;
         }
         return false;
     }
@@ -106,46 +117,54 @@ public class StructAPICom implements CommandExecutor, TabCompleter {
         }
         else if (args.length == 2) {
             if (args[0].equals("saveStructure")) {
-                returnedArgs.add("{{StructureName}}");
+                returnedArgs.add("name");
             }
             else if (args[0].equals("placeStructure")) {
+                File folder = new File(DracoStructAPI.StructuresFolder);
+                File[] listOfFiles = folder.listFiles();
+
+                for (int i = 0; i < listOfFiles.length; i++) {
+                    returnedArgs.add(listOfFiles[i].getName().replace(".dStructure", ""));
+                }
                 returnedArgs.add("{{StructureName}}");
             }
         }
         else if (args.length == 3) {
             if (args[0].equals("saveStructure")) {
-                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY() + " " + targetBlock.getZ() + " ");
-                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY() + " ");
-                returnedArgs.add(targetBlock.getX() + " ");
+                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY() + " " + targetBlock.getZ());
+                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY());
+                returnedArgs.add(targetBlock.getX()+"");
+            } else if (args[0].equals("placeStructure")) {
+                returnedArgs.add("Center");
             }
         }
         else if (args.length == 4) {
             if (args[0].equals("saveStructure")) {
-                returnedArgs.add(targetBlock.getY() + " " + targetBlock.getZ() + " ");
-                returnedArgs.add(targetBlock.getY() + " ");
+                returnedArgs.add(targetBlock.getY() + " " + targetBlock.getZ());
+                returnedArgs.add(targetBlock.getY() + "");
             }
         }
         else if (args.length == 5) {
             if (args[0].equals("saveStructure")) {
-                returnedArgs.add(targetBlock.getZ() + " ");
+                returnedArgs.add(targetBlock.getZ() + "");
             }
         }
         else if (args.length == 6) {
             if (args[0].equals("saveStructure")) {
-                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY() + " " + targetBlock.getZ() + " ");
-                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY() + " ");
-                returnedArgs.add(targetBlock.getX() + " ");
+                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY() + " " + targetBlock.getZ());
+                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY());
+                returnedArgs.add(targetBlock.getX() + "");
             }
         }
         else if (args.length == 7) {
             if (args[0].equals("saveStructure")) {
-                returnedArgs.add(targetBlock.getY() + " " + targetBlock.getZ() + " ");
-                returnedArgs.add(targetBlock.getY() + " ");
+                returnedArgs.add(targetBlock.getY() + " " + targetBlock.getZ());
+                returnedArgs.add(targetBlock.getY() + "");
             }
         }
         else if (args.length == 8) {
             if (args[0].equals("saveStructure")) {
-                returnedArgs.add(targetBlock.getZ() + " ");
+                returnedArgs.add(targetBlock.getZ() + "");
             }
         }
         return returnedArgs;

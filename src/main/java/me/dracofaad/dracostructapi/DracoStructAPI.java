@@ -2,11 +2,14 @@ package me.dracofaad.dracostructapi;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+
 public final class DracoStructAPI extends JavaPlugin {
     public static DracoStructAPI instance;
 
     public static String PluginFolder;
     public static String StructuresFolder;
+
 
     @Override
     public void onEnable() {

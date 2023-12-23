@@ -7,4 +7,3 @@ permissions:
     default: false
 commands:
   structureapi:
-    permission: structureapi.*
