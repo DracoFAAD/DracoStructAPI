@@ -203,7 +203,7 @@ public class Structure implements Serializable {
 
     public static Structure loadData(InputStream inputStream) {
         try {
-            BukkitObjectInputStream in = new BukkitObjectInputStream(new GZIPInputStream(inputStream));
+            BukkitObjectInputStream in = new BukkitObjectInputStream(inputStream);
             Structure data = (Structure) in.readObject();
             in.close();
             return data;
