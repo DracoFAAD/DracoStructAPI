@@ -7,10 +7,12 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Item;
+import org.bukkit.generator.LimitedRegion;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -32,6 +34,8 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class Structure implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1048483L;
     public HashSet<StructureBlock> blocks = new HashSet<>();
     public String StructureName = "";
     /**
@@ -148,6 +152,34 @@ public class Structure implements Serializable {
         }
     }
 
+    public void placeAtLocation(LimitedRegion limitedRegion, int x, int y, int z) {
+        for (StructureBlock block : blocks) {
+            int xWithOffset = x + (int) block.xOffset;
+            int yWithOffset = y + (int) block.yOffset;
+            int zWithOffset = z + (int) block.zOffset;
+
+            if (block.blockData.split("\\[", 2).length == 2) {
+                BlockData blockData = Material.matchMaterial(block.blockData.split("\\[")[0]).createBlockData("[" + block.blockData.split("\\[", 2)[1]);
+                limitedRegion.setBlockData(xWithOffset, yWithOffset, zWithOffset, blockData);
+            } else {
+                BlockData blockData = Material.matchMaterial(block.blockData.split("\\[")[0]).createBlockData();
+                limitedRegion.setBlockData(xWithOffset, yWithOffset, zWithOffset, blockData);
+            }
+
+
+            if (block.containerData != null) {
+                BlockState state = limitedRegion.getBlockState(xWithOffset, yWithOffset, zWithOffset);
+                if (state instanceof Container) {
+                    if (state instanceof Chest) {
+                        HashSetToContainer(((Chest) state).getBlockInventory(), block.containerData);
+                    } else {
+                        HashSetToContainer(((Container) state).getInventory(), block.containerData);
+                    }
+                }
+            }
+        }
+    }
+
     public void placeCenterXZatLocation(Location location) {
         double centerXOffset = 0;
         double centerZOffset = 0;
@@ -170,6 +202,31 @@ public class Structure implements Serializable {
         //Place the Blocks
         placeAtLocation(location.clone().add(centerXOffset, 0, centerZOffset));
     }
+
+    public void placeCenterXZatLocation(LimitedRegion limitedRegion, int x, int y, int z) {
+        double centerXOffset = 0;
+        double centerZOffset = 0;
+
+        double highestX = 0;
+        double highestZ = 0;
+        for (StructureBlock block : blocks) {
+            if(block.xOffset > highestX) {
+                highestX = block.xOffset;
+            }
+
+            if(block.zOffset > highestZ) {
+                highestZ = block.zOffset;
+            }
+        }
+
+        centerZOffset -= (highestZ / 2);
+        centerXOffset -= (highestX / 2);
+
+        //Place the Blocks
+        placeAtLocation(limitedRegion, (int) (x + centerXOffset), y, (int) (z + centerZOffset));
+    }
+
+
     //#endregion Placing
     //#region Saving Data
     private boolean saveData(String FilePath) {
@@ -203,7 +260,8 @@ public class Structure implements Serializable {
 
     public static Structure loadData(InputStream inputStream) {
         try {
-            BukkitObjectInputStream in = new BukkitObjectInputStream(inputStream);
+            GZIPInputStream gzipInputStream = new GZIPInputStream(inputStream);
+            BukkitObjectInputStream in = new BukkitObjectInputStream(gzipInputStream);
             Structure data = (Structure) in.readObject();
             in.close();
             return data;
