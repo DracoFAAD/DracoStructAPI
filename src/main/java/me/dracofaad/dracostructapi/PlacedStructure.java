@@ -1,10 +1,15 @@
 package me.dracofaad.dracostructapi;
 
+import org.bukkit.Location;
 import org.bukkit.World;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 public class PlacedStructure implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1048484L;
+
     private double Corner1X = 0.0;
     private double Corner1Y = 0.0;
     private double Corner1Z = 0.0;
@@ -49,5 +54,43 @@ public class PlacedStructure implements Serializable {
 
     public Structure getStructure() {
         return structure;
+    }
+
+    public boolean IsIn(Location location) {
+        int X = location.getBlockX();
+        int Y = location.getBlockX();
+        int Z = location.getBlockX();
+
+        double Corner1X = Math.min(this.Corner1X, this.Corner2X);
+        double Corner1Y = Math.min(this.Corner1Y, this.Corner2Y);
+        double Corner1Z = Math.min(this.Corner1Z, this.Corner2Z);
+        double Corner2X = Math.max(this.Corner1X, this.Corner2X);
+        double Corner2Y = Math.max(this.Corner1Y, this.Corner2Y);
+        double Corner2Z = Math.max(this.Corner1Z, this.Corner2Z);
+
+        if (X < Corner1X || X > Corner2X) return false;
+        if (Y < Corner1Y || Y > Corner2Y) return false;
+        if (Z < Corner1Z || Z > Corner2Z) return false;
+
+        return true;
+    }
+
+    public Location randomLocation() {
+        double Corner1X = Math.min(this.Corner1X, this.Corner2X);
+        double Corner1Y = Math.min(this.Corner1Y, this.Corner2Y);
+        double Corner1Z = Math.min(this.Corner1Z, this.Corner2Z);
+        double Corner2X = Math.max(this.Corner1X, this.Corner2X);
+        double Corner2Y = Math.max(this.Corner1Y, this.Corner2Y);
+        double Corner2Z = Math.max(this.Corner1Z, this.Corner2Z);
+
+        int X = getRandomNumber((int) Corner1X, (int) Corner2X);
+        int Y = getRandomNumber((int) Corner1Y, (int) Corner2Y);
+        int Z = getRandomNumber((int) Corner1Z, (int) Corner1Z);
+
+        return new Location(null, X, Y, Z);
+    }
+
+    public int getRandomNumber(int min, int max) {
+        return (int) ((Math.random() * ((max + 1) - min)) + min);
     }
 }
