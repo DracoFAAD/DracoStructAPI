@@ -85,7 +85,7 @@ public class PlacedStructure implements Serializable {
 
         int X = getRandomNumber((int) Corner1X, (int) Corner2X);
         int Y = getRandomNumber((int) Corner1Y, (int) Corner2Y);
-        int Z = getRandomNumber((int) Corner1Z, (int) Corner1Z);
+        int Z = getRandomNumber((int) Corner1Z, (int) Corner2Z);
 
         return new Location(null, X, Y, Z);
     }
