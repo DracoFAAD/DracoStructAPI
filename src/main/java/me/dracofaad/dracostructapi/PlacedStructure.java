@@ -2,7 +2,9 @@ package me.dracofaad.dracostructapi;
 
 import org.bukkit.World;
 
-public class PlacedStructure {
+import java.io.Serializable;
+
+public class PlacedStructure implements Serializable {
     private double Corner1X = 0.0;
     private double Corner1Y = 0.0;
     private double Corner1Z = 0.0;
