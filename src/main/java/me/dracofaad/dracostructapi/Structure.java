@@ -288,6 +288,29 @@ public class Structure implements Serializable {
     }
     //#endregion Loading Data
 
+    public StructureSize getStructureSize() {
+        double HighestX = 0;
+        double HighestY = 0;
+        double HighestZ = 0;
+        double LowestX = 0;
+        double LowestY = 0;
+        double LowestZ = 0;
+        int SizeX = (int) (HighestX + 1 + Math.abs(LowestX));
+        int SizeY = (int) (HighestY + 1 + Math.abs(LowestY));
+        int SizeZ = (int) (HighestZ + 1 + Math.abs(LowestZ));
+
+        for (StructureBlock block : blocks) {
+            if (block.xOffset > HighestX) HighestX = block.xOffset;
+            if (block.xOffset < LowestX) LowestX = block.xOffset;
+            if (block.yOffset > HighestY) HighestY = block.yOffset;
+            if (block.yOffset < LowestY) LowestY = block.yOffset;
+            if (block.zOffset > HighestZ) HighestZ = block.zOffset;
+            if (block.zOffset < LowestZ) LowestZ = block.zOffset;
+        }
+
+        return new StructureSize(SizeX, SizeY, SizeZ, HighestX, HighestY, HighestZ, LowestX, LowestY, LowestZ);
+    }
+
     public static class StructureBlock implements Serializable {
         public double xOffset = 0;
         public double yOffset = 0;
