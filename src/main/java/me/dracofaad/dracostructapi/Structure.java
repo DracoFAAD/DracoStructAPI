@@ -129,8 +129,21 @@ public class Structure implements Serializable {
     }
     //#endregion Public Saving
     //#region Placing
-    public void placeAtLocation(Location location) {
+    public PlacedStructure placeAtLocation(Location location) {
+        double highestXOffset = 0;
+        double highestYOffset = 0;
+        double highestZOffset = 0;
+        double lowestXOffset = 0;
+        double lowestYOffset = 0;
+        double lowestZOffset = 0;
+
         for (StructureBlock block : blocks) {
+            if (block.xOffset > highestXOffset) highestXOffset = block.xOffset;
+            if (block.xOffset < lowestXOffset) lowestXOffset = block.xOffset;
+            if (block.yOffset > highestYOffset) highestYOffset = block.yOffset;
+            if (block.yOffset < lowestYOffset) lowestYOffset = block.yOffset;
+            if (block.zOffset > highestZOffset) highestZOffset = block.zOffset;
+            if (block.zOffset < lowestZOffset) lowestZOffset = block.zOffset;
             Block realBlock = location.clone().add(block.xOffset, block.yOffset, block.zOffset).getBlock();
             if (block.blockData.split("\\[", 2).length == 2) {
                 BlockData blockData = Material.matchMaterial(block.blockData.split("\\[")[0]).createBlockData("[" + block.blockData.split("\\[", 2)[1]);
@@ -150,10 +163,29 @@ public class Structure implements Serializable {
                 }
             }
         }
+
+        int x = location.getBlockX();
+        int y = location.getBlockY();
+        int z = location.getBlockZ();
+
+        return new PlacedStructure(x + (int) lowestXOffset, y + (int) lowestYOffset, z + (int) lowestZOffset, x + (int) highestXOffset, y + (int) highestYOffset, z + (int) highestZOffset, this);
     }
 
-    public void placeAtLocation(LimitedRegion limitedRegion, int x, int y, int z) {
+    public PlacedStructure placeAtLocation(LimitedRegion limitedRegion, int x, int y, int z) {
+        double highestXOffset = 0;
+        double highestYOffset = 0;
+        double highestZOffset = 0;
+        double lowestXOffset = 0;
+        double lowestYOffset = 0;
+        double lowestZOffset = 0;
         for (StructureBlock block : blocks) {
+            if (block.xOffset > highestXOffset) highestXOffset = block.xOffset;
+            if (block.xOffset < lowestXOffset) lowestXOffset = block.xOffset;
+            if (block.yOffset > highestYOffset) highestYOffset = block.yOffset;
+            if (block.yOffset < lowestYOffset) lowestYOffset = block.yOffset;
+            if (block.zOffset > highestZOffset) highestZOffset = block.zOffset;
+            if (block.zOffset < lowestZOffset) lowestZOffset = block.zOffset;
+
             int xWithOffset = x + (int) block.xOffset;
             int yWithOffset = y + (int) block.yOffset;
             int zWithOffset = z + (int) block.zOffset;
@@ -178,9 +210,11 @@ public class Structure implements Serializable {
                 }
             }
         }
+
+        return new PlacedStructure(x + (int) lowestXOffset, y + (int) lowestYOffset, z + (int) lowestZOffset, x + (int) highestXOffset, y + (int) highestYOffset, z + (int) highestZOffset, this);
     }
 
-    public void placeCenterXZatLocation(Location location) {
+    public PlacedStructure placeCenterXZatLocation(Location location) {
         double centerXOffset = 0;
         double centerZOffset = 0;
 
@@ -200,10 +234,10 @@ public class Structure implements Serializable {
         centerXOffset -= (highestX / 2);
 
         //Place the Blocks
-        placeAtLocation(location.clone().add(centerXOffset, 0, centerZOffset));
+        return placeAtLocation(location.clone().add(centerXOffset, 0, centerZOffset));
     }
 
-    public void placeCenterXZatLocation(LimitedRegion limitedRegion, int x, int y, int z) {
+    public PlacedStructure placeCenterXZatLocation(LimitedRegion limitedRegion, int x, int y, int z) {
         double centerXOffset = 0;
         double centerZOffset = 0;
 
@@ -223,7 +257,7 @@ public class Structure implements Serializable {
         centerXOffset -= (highestX / 2);
 
         //Place the Blocks
-        placeAtLocation(limitedRegion, (int) (x + centerXOffset), y, (int) (z + centerZOffset));
+        return placeAtLocation(limitedRegion, (int) (x + centerXOffset), y, (int) (z + centerZOffset));
     }
 
 
@@ -309,6 +343,38 @@ public class Structure implements Serializable {
         }
 
         return new StructureSize(SizeX, SizeY, SizeZ, HighestX, HighestY, HighestZ, LowestX, LowestY, LowestZ);
+    }
+
+    public static void fillLayersBeneath(@NotNull PlacedStructure placedStructure, World world, int Y, int depth, Material material) {
+        int Corner1X = (int) placedStructure.getCorner1X();
+        int Corner1Z = (int) placedStructure.getCorner1Z();
+        int Corner2X = (int) placedStructure.getCorner2X();
+        int Corner2Z = (int) placedStructure.getCorner2Z();
+        int TargetY = Y - (depth - 1);
+
+        for (int x = Corner1X; x <= Corner2X; x++) {
+            for (int z = Corner1Z; z <= Corner2Z; z++) {
+                for (int y = Y; y >= TargetY; y--) {
+                    world.setType(x, y, z, material);
+                }
+            }
+        }
+    }
+
+    public static void fillLayersBeneath(@NotNull PlacedStructure placedStructure, LimitedRegion limitedRegion, int Y, int depth, Material material) {
+        int Corner1X = (int) placedStructure.getCorner1X();
+        int Corner1Z = (int) placedStructure.getCorner1Z();
+        int Corner2X = (int) placedStructure.getCorner2X();
+        int Corner2Z = (int) placedStructure.getCorner2Z();
+        int TargetY = Y - (depth - 1);
+
+        for (int x = Corner1X; x <= Corner2X; x++) {
+            for (int z = Corner1Z; z <= Corner2Z; z++) {
+                for (int y = Y; y >= TargetY; y--) {
+                    limitedRegion.setType(x, y, z, material);
+                }
+            }
+        }
     }
 
     public static class StructureBlock implements Serializable {
