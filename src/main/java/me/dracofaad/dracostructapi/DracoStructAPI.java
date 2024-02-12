@@ -18,6 +18,10 @@ public final class DracoStructAPI extends JavaPlugin {
         PluginFolder = getDataFolder().getAbsolutePath();
         StructuresFolder = PluginFolder + "/Structures";
 
+        if (!(new File(StructuresFolder).exists())) {
+            new File(StructuresFolder).mkdirs();
+        }
+
         // Plugin startup logic
         StructAPICom structAPICom = new StructAPICom();
         getCommand("structureapi").setExecutor(structAPICom);

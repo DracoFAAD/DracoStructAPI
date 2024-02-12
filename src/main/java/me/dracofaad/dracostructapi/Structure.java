@@ -11,6 +11,8 @@ import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
 import org.bukkit.generator.LimitedRegion;
 import org.bukkit.inventory.Inventory;
@@ -29,6 +31,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Struct;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -103,6 +106,57 @@ public class Structure implements Serializable {
         }
     }
 
+    public Structure(String name, World world, double x1, double y1, double z1, double x2, double y2, double z2, double cX, double cY, double cZ) {
+        this.StructureName = name;
+
+        //Corner Correction
+        if (x1 > x2) {
+            double temp = x2;
+            x2 = x1;
+            x1 = temp;
+        }
+
+        if (y2 > y1) {
+            double temp = y1;
+            y1 = y2;
+            y2 = temp;
+        }
+
+        if (z1 > z2) {
+            double temp = z2;
+            z2 = z1;
+            z1 = temp;
+        }
+
+
+        for (int x = (int) x1; x <= (int) x2; x++) {
+            for (int z = (int) z1; z <= (int) z2; z++) {
+                for (int y = (int) y1; y >= (int) y2; y--) {
+                    double xOffset = x-cX;
+                    double yOffset = y-cY;
+                    double zOffset = z-cZ;
+
+                    Location location = new Location(world, x, y, z);
+                    Block block = location.getBlock();
+                    BlockData blockData = block.getBlockData();
+                    String blockDataString = blockData.getAsString();
+                    HashSet<Tuple<Integer, Map<String, Object>>> containerData = null;
+
+                    if (block.getState() instanceof Container) {
+                        containerData = new HashSet<>();
+                        if (block.getState() instanceof Chest) {
+                            ContainerToHashSet(((Chest) block.getState()).getBlockInventory(), containerData);
+                        } else {
+                            ContainerToHashSet(((Container) block.getState()).getInventory(), containerData);
+                        }
+                    }
+
+                    blocks.add(new StructureBlock(blockDataString, xOffset, yOffset, zOffset, containerData));
+                }
+            }
+        }
+    }
+
     private void ContainerToHashSet(Inventory inventory, HashSet<Tuple<Integer, Map<String, Object>>> hashSet) {
         for (ListIterator<ItemStack> iterator = inventory.iterator(); iterator.hasNext(); ) {
             Integer index = iterator.nextIndex();
@@ -116,6 +170,53 @@ public class Structure implements Serializable {
         for (Tuple<Integer, Map<String, Object>> item : hashSet) {
             inventory.setItem(item.Value1, ItemStack.deserialize(item.Value2));
         }
+    }
+
+    public boolean matchStructure(Location centerLocation, boolean ignoreInvisible) {
+        for (StructureBlock block : blocks) {
+            Location offsetLocation = centerLocation.clone().add(block.xOffset, block.yOffset, block.zOffset);
+            Material structureBlockMaterial = Material.matchMaterial(block.blockData.split("\\[")[0]);
+            Material realMaterial = offsetLocation.getBlock().getType();
+
+            if (ignoreInvisible) {
+                if (structureBlockMaterial == Material.AIR || structureBlockMaterial == Material.CAVE_AIR || structureBlockMaterial == Material.VOID_AIR || structureBlockMaterial == Material.STRUCTURE_VOID) {
+                    continue;
+                }
+            }
+
+            if (structureBlockMaterial != realMaterial) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public PlacedStructure matchAndReturnPlacedStructure(Location centerLocation, boolean ignoreInvisible) {
+        boolean matches = matchStructure(centerLocation, ignoreInvisible);
+
+        if (!matches) return null;
+
+        double highestXOffset = 0;
+        double highestYOffset = 0;
+        double highestZOffset = 0;
+        double lowestXOffset = 0;
+        double lowestYOffset = 0;
+        double lowestZOffset = 0;
+
+        int x = centerLocation.getBlockX();
+        int y = centerLocation.getBlockY();
+        int z = centerLocation.getBlockZ();
+
+        for (StructureBlock block : blocks) {
+            if (block.xOffset > highestXOffset) highestXOffset = block.xOffset;
+            if (block.xOffset < lowestXOffset) lowestXOffset = block.xOffset;
+            if (block.yOffset > highestYOffset) highestYOffset = block.yOffset;
+            if (block.yOffset < lowestYOffset) lowestYOffset = block.yOffset;
+            if (block.zOffset > highestZOffset) highestZOffset = block.zOffset;
+            if (block.zOffset < lowestZOffset) lowestZOffset = block.zOffset;
+        }
+
+        return new PlacedStructure(x + (int) lowestXOffset, y + (int) lowestYOffset, z + (int) lowestZOffset, x + (int) highestXOffset, y + (int) highestYOffset, z + (int) highestZOffset, this);
     }
 
     //#region Public Saving
@@ -377,6 +478,46 @@ public class Structure implements Serializable {
         }
     }
 
+    public static List<StructureBlockEntity> entitifyStructure(PlacedStructure placedStructure, World world) {
+        List<StructureBlockEntity> blocks = new ArrayList<>();
+
+        int Corner1X = (int) placedStructure.getCorner1X();
+        int Corner1Y = (int) placedStructure.getCorner1Y();
+        int Corner1Z = (int) placedStructure.getCorner1Z();
+        int Corner2X = (int) placedStructure.getCorner2X();
+        int Corner2Y = (int) placedStructure.getCorner2Y();
+        int Corner2Z = (int) placedStructure.getCorner2Z();
+
+        for (int x = Corner1X; x <= Corner2X; x++) {
+            for (int z = Corner1Z; z <= Corner2Z; z++) {
+                for (int y = Corner1Y; y <= Corner2Y; y++) {
+                    //Loop trough.
+                    Location location = new Location(world, x, y, z);
+                    Block block = location.getBlock();
+                    BlockData blockData = block.getBlockData();
+                    Material material = block.getType();
+
+
+                    if (material.isAir() || material == Material.STRUCTURE_VOID) continue;
+                    //We need to entitify.
+
+                    Bukkit.broadcastMessage(x + " " + y + " " + z);
+
+                    block.setType(Material.AIR);
+
+                    BlockDisplay blockDisplay = (BlockDisplay) world.spawnEntity(location, EntityType.BLOCK_DISPLAY);
+                    blockDisplay.setBlock(blockData);
+                    blockDisplay.setGravity(false);
+                    blockDisplay.setInvulnerable(false);
+
+                    blocks.add(new StructureBlockEntity(blockDisplay, placedStructure.getStructure()));
+                }
+            }
+        }
+
+        return blocks;
+    }
+
     public static class StructureBlock implements Serializable {
         public double xOffset = 0;
         public double yOffset = 0;
@@ -390,6 +531,18 @@ public class Structure implements Serializable {
             this.zOffset = zOffset;
             this.blockData = blockData;
             this.containerData = containerData;
+        }
+    }
+
+    public static class StructureBlockEntity implements Serializable {
+        public transient BlockDisplay blockDisplay;
+
+        public final Structure structure;
+
+        public StructureBlockEntity(BlockDisplay blockDisplay, Structure structure) {
+            //We need to calculate the offset.
+            this.blockDisplay = blockDisplay;
+            this.structure = structure;
         }
     }
 

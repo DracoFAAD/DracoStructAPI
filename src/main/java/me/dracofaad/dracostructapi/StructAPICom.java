@@ -25,7 +25,7 @@ public class StructAPICom implements CommandExecutor, TabCompleter {
         }
         if (args.length == 1) {
             if (args[0].equals("saveStructure")) {
-                sender.sendMessage(ChatColor.WHITE + "Usage: " + cmdName + " saveStructure StructureName x1 y1 z1 x2 y2 z2");
+                sender.sendMessage(ChatColor.WHITE + "Usage: " + cmdName + " saveStructure StructureName x1 y1 z1 x2 y2 z2 cX cY cZ");
                 return true;
             }
             else if (args[0].equals("placeStructure")) {
@@ -40,7 +40,7 @@ public class StructAPICom implements CommandExecutor, TabCompleter {
                 return true;
             }
 
-            if (args.length != 8) {
+            if (args.length < 8) {
                 sender.sendMessage(ChatColor.WHITE + "Usage: " + cmdName + " saveStructure StructureName x1 y1 z1 x2 y2 z2");
                 return true;
             }
@@ -62,6 +62,18 @@ public class StructAPICom implements CommandExecutor, TabCompleter {
             double x2 = Double.parseDouble(args[5]);
             double y2 = Double.parseDouble(args[6]);
             double z2 = Double.parseDouble(args[7]);
+
+            if (!(args.length < 11)) {
+                double cX = Double.parseDouble(args[8]);
+                double cY = Double.parseDouble(args[9]);
+                double cZ = Double.parseDouble(args[10]);
+
+                Structure structure = new Structure(StructureName, ((Player) sender).getWorld(), x1, y1, z1, x2, y2, z2, cX, cY, cZ);
+                structure.saveAsFile();
+
+                sender.sendMessage("Sucessfully saved structure " + ChatColor.BOLD + structure.StructureName + ChatColor.RESET + "!");
+                return true;
+            }
 
             Structure structure = new Structure(StructureName, ((Player) sender).getWorld(), x1, y1, z1, x2, y2, z2);
             structure.saveAsFile();
@@ -99,6 +111,12 @@ public class StructAPICom implements CommandExecutor, TabCompleter {
                     structure.placeCenterXZatLocation(((Player) sender).getLocation());
                     return true;
                 }
+
+                if (args[2].equals("Entitify")) {
+                    PlacedStructure placedStructure = structure.placeAtLocation(((Player) sender).getLocation());
+                    Structure.entitifyStructure(placedStructure, ((Player) sender).getWorld());
+                    return true;
+                }
             }
             structure.placeAtLocation(((Player) sender).getLocation());
             return true;
@@ -123,10 +141,12 @@ public class StructAPICom implements CommandExecutor, TabCompleter {
                 File folder = new File(DracoStructAPI.StructuresFolder);
                 File[] listOfFiles = folder.listFiles();
 
-                for (int i = 0; i < listOfFiles.length; i++) {
-                    returnedArgs.add(listOfFiles[i].getName().replace(".dStructure", ""));
+                if (listOfFiles != null) {
+                    for (int i = 0; i < listOfFiles.length; i++) {
+                        returnedArgs.add(listOfFiles[i].getName().replace(".dStructure", ""));
+                    }
+                    returnedArgs.add("{{StructureName}}");
                 }
-                returnedArgs.add("{{StructureName}}");
             }
         }
         else if (args.length == 3) {
@@ -163,6 +183,24 @@ public class StructAPICom implements CommandExecutor, TabCompleter {
             }
         }
         else if (args.length == 8) {
+            if (args[0].equals("saveStructure")) {
+                returnedArgs.add(targetBlock.getZ() + "");
+            }
+        }
+        else if (args.length == 9) {
+            if (args[0].equals("saveStructure")) {
+                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY() + " " + targetBlock.getZ());
+                returnedArgs.add(targetBlock.getX() + " " + targetBlock.getY());
+                returnedArgs.add(targetBlock.getX() + "");
+            }
+        }
+        else if (args.length == 10) {
+            if (args[0].equals("saveStructure")) {
+                returnedArgs.add(targetBlock.getY() + " " + targetBlock.getZ());
+                returnedArgs.add(targetBlock.getY() + "");
+            }
+        }
+        else if (args.length == 11) {
             if (args[0].equals("saveStructure")) {
                 returnedArgs.add(targetBlock.getZ() + "");
             }
