@@ -509,8 +509,6 @@ public class Structure implements Serializable {
                     if (material.isAir() || material == Material.STRUCTURE_VOID) continue;
                     //We need to entitify.
 
-                    Bukkit.broadcastMessage(x + " " + y + " " + z);
-
                     block.setType(Material.AIR);
 
                     BlockDisplay blockDisplay = (BlockDisplay) world.spawnEntity(location, EntityType.BLOCK_DISPLAY);

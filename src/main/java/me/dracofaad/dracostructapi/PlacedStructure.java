@@ -72,8 +72,6 @@ public class PlacedStructure implements Serializable {
         return CenterZ;
     }
 
-
-
     public Structure getStructure() {
         return structure;
     }
