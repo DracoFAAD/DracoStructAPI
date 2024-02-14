@@ -16,6 +16,11 @@ public class PlacedStructure implements Serializable {
     private double Corner2X = 0.0;
     private double Corner2Y = 0.0;
     private double Corner2Z = 0.0;
+
+    private double CenterX = 0.0;
+    private double CenterY = 0.0;
+    private double CenterZ = 0.0;
+
     private final Structure structure;
 
     public PlacedStructure(double corner1X, double corner1Y, double corner1Z, double corner2X, double corner2Y, double corner2Z, Structure structure) {
@@ -25,6 +30,11 @@ public class PlacedStructure implements Serializable {
         Corner2X = corner2X;
         Corner2Y = corner2Y;
         Corner2Z = corner2Z;
+
+        CenterX = Corner1X + structure.CenterOffsetX;
+        CenterY = Corner1Y + structure.CenterOffsetY;
+        CenterZ = Corner1Z + structure.CenterOffsetZ;
+
         this.structure = structure;
     }
 
@@ -51,6 +61,18 @@ public class PlacedStructure implements Serializable {
     public double getCorner2Z() {
         return Corner2Z;
     }
+
+    public double getCenterX() {
+        return CenterX;
+    }
+    public double getCenterY() {
+        return CenterY;
+    }
+    public double getCenterZ() {
+        return CenterZ;
+    }
+
+
 
     public Structure getStructure() {
         return structure;

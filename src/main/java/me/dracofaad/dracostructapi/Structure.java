@@ -41,6 +41,11 @@ public class Structure implements Serializable {
     private static final long serialVersionUID = 1048483L;
     public HashSet<StructureBlock> blocks = new HashSet<>();
     public String StructureName = "";
+
+    public double CenterOffsetX = 0.0;
+    public double CenterOffsetY = 0.0;
+    public double CenterOffsetZ = 0.0;
+
     /**
      *
      * This function returns a brand new Structure which is retrieved from the real world.
@@ -128,6 +133,9 @@ public class Structure implements Serializable {
             z1 = temp;
         }
 
+        CenterOffsetX = cX - x1;
+        CenterOffsetY = cY - y1;
+        CenterOffsetZ = cZ - z1;
 
         for (int x = (int) x1; x <= (int) x2; x++) {
             for (int z = (int) z1; z <= (int) z2; z++) {
