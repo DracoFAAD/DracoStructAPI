@@ -13,6 +13,7 @@ import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Item;
 import org.bukkit.generator.LimitedRegion;
 import org.bukkit.inventory.Inventory;
@@ -516,7 +517,46 @@ public class Structure implements Serializable {
                     blockDisplay.setGravity(false);
                     blockDisplay.setInvulnerable(false);
 
-                    blocks.add(new StructureBlockEntity(blockDisplay, placedStructure.getStructure()));
+                    blocks.add(new StructureBlockEntity(blockDisplay, null, placedStructure.getStructure()));
+                }
+            }
+        }
+
+        return blocks;
+    }
+
+    public static List<StructureBlockEntity> entitifyStructureFallingBlock(PlacedStructure placedStructure, World world) {
+        List<StructureBlockEntity> blocks = new ArrayList<>();
+
+        int Corner1X = (int) placedStructure.getCorner1X();
+        int Corner1Y = (int) placedStructure.getCorner1Y();
+        int Corner1Z = (int) placedStructure.getCorner1Z();
+        int Corner2X = (int) placedStructure.getCorner2X();
+        int Corner2Y = (int) placedStructure.getCorner2Y();
+        int Corner2Z = (int) placedStructure.getCorner2Z();
+
+        for (int x = Corner1X; x <= Corner2X; x++) {
+            for (int z = Corner1Z; z <= Corner2Z; z++) {
+                for (int y = Corner1Y; y <= Corner2Y; y++) {
+                    //Loop trough.
+                    Location location = new Location(world, x, y, z);
+                    Block block = location.getBlock();
+                    BlockData blockData = block.getBlockData();
+                    Material material = block.getType();
+
+
+                    if (material.isAir() || material == Material.STRUCTURE_VOID) continue;
+                    //We need to entitify.
+
+                    block.setType(Material.AIR);
+
+                    FallingBlock fallingBlock = (FallingBlock) world.spawnEntity(location, EntityType.BLOCK_DISPLAY);
+                    fallingBlock.setBlockData(blockData);
+                    fallingBlock.setGravity(false);
+                    fallingBlock.setInvulnerable(true);
+                    fallingBlock.shouldAutoExpire(false);
+
+                    blocks.add(new StructureBlockEntity(null, fallingBlock, placedStructure.getStructure()));
                 }
             }
         }
@@ -542,12 +582,21 @@ public class Structure implements Serializable {
 
     public static class StructureBlockEntity implements Serializable {
         public transient BlockDisplay blockDisplay;
+        public transient FallingBlock fallingBlock;
+
+        public boolean usesFallingBlock = false;
 
         public final Structure structure;
 
-        public StructureBlockEntity(BlockDisplay blockDisplay, Structure structure) {
+        public StructureBlockEntity(BlockDisplay blockDisplay, FallingBlock fallingBlock, Structure structure) {
             //We need to calculate the offset.
-            this.blockDisplay = blockDisplay;
+            if (blockDisplay == null) {
+                this.fallingBlock = fallingBlock;
+                usesFallingBlock = true;
+            } else {
+                this.blockDisplay = blockDisplay;
+                usesFallingBlock = false;
+            }
             this.structure = structure;
         }
     }
