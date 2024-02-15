@@ -550,7 +550,7 @@ public class Structure implements Serializable {
 
                     block.setType(Material.AIR);
 
-                    FallingBlock fallingBlock = (FallingBlock) world.spawnEntity(location, EntityType.BLOCK_DISPLAY);
+                    FallingBlock fallingBlock = (FallingBlock) world.spawnEntity(location, EntityType.FALLING_BLOCK);
                     fallingBlock.setBlockData(blockData);
                     fallingBlock.setGravity(false);
                     fallingBlock.setInvulnerable(true);
