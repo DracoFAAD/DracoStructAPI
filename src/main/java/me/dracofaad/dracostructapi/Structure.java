@@ -539,7 +539,7 @@ public class Structure implements Serializable {
             for (int z = Corner1Z; z <= Corner2Z; z++) {
                 for (int y = Corner1Y; y <= Corner2Y; y++) {
                     //Loop trough.
-                    Location location = new Location(world, x, y, z);
+                    Location location = new Location(world, x + 0.5, y, z + 0.5);
                     Block block = location.getBlock();
                     BlockData blockData = block.getBlockData();
                     Material material = block.getType();
