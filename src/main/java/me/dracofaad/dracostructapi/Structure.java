@@ -122,7 +122,7 @@ public class Structure implements Serializable {
             x1 = temp;
         }
 
-        if (y2 > y1) {
+        if (y1 > y2) {
             double temp = y1;
             y1 = y2;
             y2 = temp;
@@ -140,7 +140,7 @@ public class Structure implements Serializable {
 
         for (int x = (int) x1; x <= (int) x2; x++) {
             for (int z = (int) z1; z <= (int) z2; z++) {
-                for (int y = (int) y1; y >= (int) y2; y--) {
+                for (int y = (int) y1; y <= (int) y2; y++) {
                     double xOffset = x-cX;
                     double yOffset = y-cY;
                     double zOffset = z-cZ;
